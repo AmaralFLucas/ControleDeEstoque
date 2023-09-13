@@ -1,6 +1,10 @@
+import sqlite3
 import sys
+from datetime import datetime
+
 from PySide6.QtWidgets import (QMainWindow, QApplication, QHBoxLayout,
-                               QVBoxLayout, QTableWidget, QAbstractItemView, QPushButton, QLabel, QLineEdit, QWidget)
+                               QVBoxLayout, QTableWidget, QAbstractItemView,
+                               QPushButton, QLabel, QLineEdit, QWidget, QMessageBox)
 
 
 class EstoqueApp(QMainWindow):
@@ -9,6 +13,13 @@ class EstoqueApp(QMainWindow):
 
         self.setWindowTitle('Controle de Estoque')
         self.setGeometry(100, 100, 800, 400)
+
+        #criamos conexãoo com o banco de dados e o cursor, ambos da instância
+        self.conn = sqlite3.connect('estoque.db')
+        self.cursor = self.conn.cursor()
+
+        #Criamos a tabela
+        self.criar_tabela()
 
         layout_principal = QHBoxLayout()
         layout_esquerda = QVBoxLayout()
@@ -72,6 +83,47 @@ class EstoqueApp(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(layout_principal)
         self.setCentralWidget(central_widget)
+
+        self.btn_cadastrar.clicked.connect(self.inserir_produto)
+    def criar_tabela(self):
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS produtos
+                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               nome TEXT NOT NULL,
+                               preco REAL NOT NULL,
+                               quantidade INTEGER NOT NULL,
+                               data_validade TEXT,
+                               categoria TEXT,
+                               fornecedores TEXT)''')
+            self.conn.commit()
+
+    def inserir_produto(self):
+            if self.validar_data():
+                try:
+                    self.cursor.execute("INSERT INTO produtos (nome, preco, quantidade, data_validade,"
+                                        " categoria, fornecedores) VALUES (?, ?, ?, ?, ?, ?)",
+                     (self.txt_nome.text(), self.txt_preco.text(), self.txt_quantidade.text(),
+                      self.txt_data.text(), self.txt_categoria.text(), self.txt_fornecedor.text()))
+                    self.conn.commit()
+                    QMessageBox.information(self, 'Cadastro de produto', 'Produto cadastrado')
+                    self.limpar_campos()
+                except Exception as e:
+                    print(e)
+
+    def limpar_campos(self):
+        self.txt_nome.clear()
+        self.txt_preco.clear()
+        self.txt_quantidade.clear()
+        self.txt_data.clear()
+        self.txt_categoria.clear()
+        self.txt_fornecedor.clear()
+
+    def validar_data(self):
+        try:
+            datetime.strptime(self.txt_data.text(), '%d/%m/%Y')
+            return True
+        except:
+            QMessageBox.warning(self, 'Aviso', 'Data de validade fora do padrão dd/mm/aaaa')
+            return False
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
